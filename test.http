@@ -1,0 +1,10 @@
+POST http://localhost:8080/api/notifications
+Content-Type: application/json
+
+{
+  "sender": "Facebook",
+  "recipient": "Mag",
+  "subject": "Nowa wiadomość",
+  "content": "Masz nową wiadomość od użytkownika",
+  "type": "EMAIL"
+}
