@@ -32,6 +32,15 @@ type Notification = {
     mailAccount?: MailAccount;
 };
 
+const typeLabels: Record<string, string> = {
+    ALL: "Wszystkie",
+    EMAIL: "Poczta",
+    CALENDAR: "Kalendarz",
+    TASK: "Zadania",
+};
+
+const typeLabel = (type: string) => typeLabels[type] ?? type;
+
 function App() {
     const [user, setUser] = useState<User | null>(() => {
         const saved = localStorage.getItem("user");
@@ -185,9 +194,14 @@ function App() {
     }
 
     async function syncEmails() {
-        await fetch(`${API_URL}/mail-accounts/sync`, {
+        const res = await fetch(`${API_URL}/mail-accounts/sync`, {
             method: "POST",
         });
+
+        if (!res.ok) {
+            setMessage("Błąd synchronizacji Gmaila");
+            return;
+        }
 
         setMessage("Gmail zsynchronizowany");
         await loadNotifications();
@@ -199,6 +213,10 @@ function App() {
         setNotifications([]);
         setMailAccounts([]);
         setGoogleAccount(null);
+        setSelectedNotification(null);
+        setMailFilter(null);
+        setTypeFilter("ALL");
+        setMessage("");
     }
 
     function formatDate(date: string) {
@@ -208,17 +226,13 @@ function App() {
 
     const filteredNotifications = notifications.filter((notification) => {
         const typeOk = typeFilter === "ALL" || notification.type === typeFilter;
-
-        const mailOk =
-            mailFilter === null ||
-            notification.mailAccount?.id === mailFilter;
-
+        const mailOk = mailFilter === null || notification.mailAccount?.id === mailFilter;
         return typeOk && mailOk;
     });
 
     function countType(type: string) {
         if (type === "ALL") return notifications.length;
-        return notifications.filter((n) => n.type === type).length;
+        return notifications.filter((notification) => notification.type === type).length;
     }
 
     if (!user) {
@@ -227,25 +241,25 @@ function App() {
                 <div className="auth-card">
                     <div className="auth-logo">NotifyDesk</div>
                     <h1>Centrum powiadomień</h1>
-                    <p>Gmail, Calendar i Tasks w jednym dashboardzie.</p>
+                    <p>Poczta, kalendarz i zadania w jednym dashboardzie.</p>
 
                     <input
                         placeholder="Adres e-mail"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(event) => setEmail(event.target.value)}
                     />
 
                     <input
                         placeholder="Hasło"
                         type="password"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(event) => setPassword(event.target.value)}
                     />
 
                     <div className="auth-buttons">
-                        <button onClick={login}>Login</button>
+                        <button onClick={login}>Zaloguj się</button>
                         <button className="secondary" onClick={register}>
-                            Register
+                            Zarejestruj się
                         </button>
                     </div>
 
@@ -265,11 +279,11 @@ function App() {
 
                 <div className="dual-actions">
                     <button className="sync-button" onClick={syncEmails}>
-                        Sync Gmail
+                        Synchronizuj Gmail
                     </button>
 
                     <button className="sync-button google" onClick={syncGoogle}>
-                        Sync Google
+                        Synchronizuj Google
                     </button>
                 </div>
 
@@ -282,7 +296,7 @@ function App() {
                             className={typeFilter === item ? "nav-item active" : "nav-item"}
                             onClick={() => setTypeFilter(item)}
                         >
-                            <strong>{item === "ALL" ? "Wszystkie" : item}</strong>
+                            <strong>{typeLabel(item)}</strong>
                             <span>{countType(item)} powiadomień</span>
                         </button>
                     ))}
@@ -309,7 +323,7 @@ function App() {
                                 }}
                             >
                                 <strong>{account.gmailAddress}</strong>
-                                <span>{account.active ? "active" : "off"}</span>
+                                <span>{account.active ? "aktywne" : "wył."}</span>
                             </button>
 
                             <button
@@ -349,14 +363,14 @@ function App() {
                     <input
                         placeholder="Adres Gmail"
                         value={gmailAddress}
-                        onChange={(e) => setGmailAddress(e.target.value)}
+                        onChange={(event) => setGmailAddress(event.target.value)}
                     />
 
                     <input
-                        placeholder="App Password"
+                        placeholder="Hasło aplikacji"
                         type="password"
                         value={appPassword}
-                        onChange={(e) => setAppPassword(e.target.value)}
+                        onChange={(event) => setAppPassword(event.target.value)}
                     />
 
                     <button onClick={addMailAccount}>Dodaj Gmail</button>
@@ -366,7 +380,7 @@ function App() {
                         target="_blank"
                         rel="noopener noreferrer"
                     >
-                        Wygeneruj App Password
+                        Wygeneruj hasło aplikacji
                     </a>
                 </section>
 
@@ -379,7 +393,7 @@ function App() {
                 <header className="topbar">
                     <div>
                         <h1>Powiadomienia</h1>
-                        <p>Gmail, Calendar i Tasks w jednym miejscu.</p>
+                        <p>Poczta, kalendarz i zadania w jednym miejscu.</p>
                     </div>
 
                     {message && <div className="toast">{message}</div>}
@@ -392,17 +406,17 @@ function App() {
                     </div>
 
                     <div className="stat-card">
-                        <span>Email</span>
+                        <span>Poczta</span>
                         <strong>{countType("EMAIL")}</strong>
                     </div>
 
                     <div className="stat-card">
-                        <span>Calendar</span>
+                        <span>Kalendarz</span>
                         <strong>{countType("CALENDAR")}</strong>
                     </div>
 
                     <div className="stat-card">
-                        <span>Tasks</span>
+                        <span>Zadania</span>
                         <strong>{countType("TASK")}</strong>
                     </div>
                 </section>
@@ -426,9 +440,9 @@ function App() {
                                 onClick={() => setSelectedNotification(notification)}
                             >
                                 <div className="card-top">
-                  <span className={`badge ${notification.type.toLowerCase()}`}>
-                    {notification.type}
-                  </span>
+                                    <span className={`badge ${notification.type.toLowerCase()}`}>
+                                        {typeLabel(notification.type)}
+                                    </span>
 
                                     <span className="date">{formatDate(notification.receivedAt)}</span>
                                 </div>
@@ -444,11 +458,11 @@ function App() {
                     <div className="preview">
                         {selectedNotification ? (
                             <>
-                <span className={`badge big ${selectedNotification.type.toLowerCase()}`}>
-                  {selectedNotification.type}
-                </span>
+                                <span className={`badge big ${selectedNotification.type.toLowerCase()}`}>
+                                    {typeLabel(selectedNotification.type)}
+                                </span>
 
-                                <h2>{selectedNotification.subject}</h2>
+                                <h2>{selectedNotification.subject || "(Brak tematu)"}</h2>
 
                                 <div className="meta">
                                     <p><b>Od:</b> {selectedNotification.sender}</p>
