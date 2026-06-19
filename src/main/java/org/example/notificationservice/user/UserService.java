@@ -1,6 +1,7 @@
 package org.example.notificationservice.user;
 
 import lombok.RequiredArgsConstructor;
+import org.example.notificationservice.user.dto.AuthResponse;
 import org.example.notificationservice.user.dto.LoginRequest;
 import org.example.notificationservice.user.dto.RegisterRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,11 +24,12 @@ public class UserService {
         User user = new User();
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.password()));
+        user.setRole("USER");
 
         return userRepository.save(user);
     }
 
-    public User login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         String email = request.email().trim().toLowerCase();
 
         User user = userRepository.findByEmail(email)
@@ -37,6 +39,10 @@ public class UserService {
             throw new RuntimeException("Invalid password");
         }
 
-        return user;
+        return new AuthResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getRole()
+        );
     }
 }

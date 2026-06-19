@@ -6,6 +6,7 @@ const API_URL = "http://localhost:8080/api";
 type User = {
     id: number;
     email: string;
+    role: string;
 };
 
 type MailAccount = {
@@ -30,6 +31,20 @@ type Notification = {
     status: string;
     receivedAt: string;
     mailAccount?: MailAccount;
+};
+
+type AdminStats = {
+    usersCount: number;
+    adminsCount: number;
+    mailAccountsCount: number;
+    googleAccountsCount: number;
+    notificationsCount: number;
+};
+
+type AdminUser = {
+    id: number;
+    email: string;
+    role: string;
 };
 
 const typeLabels: Record<string, string> = {
@@ -57,14 +72,23 @@ function App() {
     const [googleAccount, setGoogleAccount] = useState<GoogleAccount | null>(null);
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
+    const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
+    const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+
     const [typeFilter, setTypeFilter] = useState("ALL");
     const [mailFilter, setMailFilter] = useState<number | null>(null);
 
     const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
     const [message, setMessage] = useState("");
 
+    const isAdmin = user?.role === "ADMIN";
+
     useEffect(() => {
-        if (user) {
+        if (!user) return;
+
+        if (user.role === "ADMIN") {
+            loadAdminData();
+        } else {
             loadMailAccounts();
             loadGoogleAccount();
             loadNotifications();
@@ -103,6 +127,19 @@ function App() {
         const data = await res.json();
         setUser(data);
         localStorage.setItem("user", JSON.stringify(data));
+    }
+
+    async function loadAdminData() {
+        const statsRes = await fetch(`${API_URL}/admin/stats`);
+        const usersRes = await fetch(`${API_URL}/admin/users`);
+
+        if (!statsRes.ok || !usersRes.ok) {
+            setMessage("Nie udało się pobrać danych administratora");
+            return;
+        }
+
+        setAdminStats(await statsRes.json());
+        setAdminUsers(await usersRes.json());
     }
 
     async function loadMailAccounts() {
@@ -213,6 +250,8 @@ function App() {
         setNotifications([]);
         setMailAccounts([]);
         setGoogleAccount(null);
+        setAdminStats(null);
+        setAdminUsers([]);
         setSelectedNotification(null);
         setMailFilter(null);
         setTypeFilter("ALL");
@@ -269,6 +308,237 @@ function App() {
         );
     }
 
+    if (isAdmin) {
+        return (
+            <div className="dashboard">
+                <aside className="sidebar">
+                    <div className="brand">
+                        <h2>NotifyDesk</h2>
+                        <span>{user.email}</span>
+
+                        <div
+                            style={{
+                                marginTop: "10px",
+                                padding: "8px 12px",
+                                borderRadius: "8px",
+                                background: "#ff9800",
+                                color: "white",
+                                fontWeight: "bold",
+                                textAlign: "center",
+                            }}
+                        >
+                            ADMIN DESK
+                        </div>
+                    </div>
+
+                    <section className="sidebar-section">
+                        <div className="section-title">Panel administratora</div>
+
+                        <button className="nav-item active" onClick={loadAdminData}>
+                            <strong>Dashboard</strong>
+                            <span>Statystyki systemu</span>
+                        </button>
+                    </section>
+
+                    <button className="logout" onClick={logout}>
+                        Wyloguj
+                    </button>
+                </aside>
+
+                <main className="main">
+                    <header className="topbar">
+                        <div>
+                            <h1>Admin Desk</h1>
+                            <p>Statystyki użytkowników, kont i powiadomień w systemie.</p>
+                        </div>
+
+                        {message && <div className="toast">{message}</div>}
+                    </header>
+
+                    <section className="stats-row">
+                        <div className="stat-card">
+                            <span>Użytkownicy</span>
+                            <strong>{adminStats?.usersCount ?? 0}</strong>
+                        </div>
+
+                        <div className="stat-card">
+                            <span>Admini</span>
+                            <strong>{adminStats?.adminsCount ?? 0}</strong>
+                        </div>
+
+                        <div className="stat-card">
+                            <span>Konta Gmail</span>
+                            <strong>{adminStats?.mailAccountsCount ?? 0}</strong>
+                        </div>
+
+                        <div className="stat-card">
+                            <span>Konta Google</span>
+                            <strong>{adminStats?.googleAccountsCount ?? 0}</strong>
+                        </div>
+
+                        <div className="stat-card">
+                            <span>Powiadomienia</span>
+                            <strong>{adminStats?.notificationsCount ?? 0}</strong>
+                        </div>
+                    </section>
+
+                    <section
+                        style={{
+                            marginTop: "24px",
+                            padding: "24px",
+                            borderRadius: "24px",
+                            background: "rgba(15, 15, 25, 0.95)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "18px",
+                            }}
+                        >
+                            <div>
+                                <h2>Użytkownicy systemu</h2>
+                                <p style={{ color: "#9ca3af", marginTop: "6px" }}>
+                                    Lista kont z rolami USER / ADMIN.
+                                </p>
+                            </div>
+
+                            <button
+                                className="admin-button"
+                                onClick={loadAdminData}
+                            >
+                                Odśwież dane
+                            </button>
+                        </div>
+
+                        <table
+                            className="admin-table"
+                        >
+                            <thead>
+                            <tr style={{ background: "#1d1d2e" }}>
+                                <th style={{ padding: "14px", textAlign: "left" }}>ID</th>
+                                <th style={{ padding: "14px", textAlign: "left" }}>Email</th>
+                                <th style={{ padding: "14px", textAlign: "left" }}>Rola</th>
+                            </tr>
+                            </thead>
+
+                            <tbody>
+                            {adminUsers.length === 0 ? (
+                                <tr>
+                                    <td
+                                        colSpan={3}
+                                        style={{
+                                            padding: "20px",
+                                            textAlign: "center",
+                                            color: "#9ca3af",
+                                        }}
+                                    >
+                                        Brak użytkowników do wyświetlenia.
+                                    </td>
+                                </tr>
+                            ) : (
+                                adminUsers.map((adminUser) => (
+                                    <tr
+                                        key={adminUser.id}
+                                        style={{
+                                            borderTop: "1px solid rgba(255,255,255,0.08)",
+                                        }}
+                                    >
+                                        <td style={{ padding: "14px" }}>{adminUser.id}</td>
+                                        <td style={{ padding: "14px" }}>{adminUser.email}</td>
+                                        <td style={{ padding: "14px" }}>
+                                                <span
+                                                    style={{
+                                                        padding: "6px 12px",
+                                                        borderRadius: "999px",
+                                                        background:
+                                                            adminUser.role === "ADMIN"
+                                                                ? "#ff9800"
+                                                                : "#2d6cdf",
+                                                        color: "white",
+                                                        fontWeight: "bold",
+                                                    }}
+                                                >
+                                                    {adminUser.role}
+                                                </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section
+                        style={{
+                            marginTop: "24px",
+                            padding: "24px",
+                            borderRadius: "24px",
+                            background: "rgba(15, 15, 25, 0.95)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                        }}
+                    >
+                        <h2>Podsumowanie systemu</h2>
+
+                        <table
+                            style={{
+                                width: "100%",
+                                marginTop: "18px",
+                                borderCollapse: "collapse",
+                                background: "#11111c",
+                                borderRadius: "16px",
+                                overflow: "hidden",
+                            }}
+                        >
+                            <thead>
+                            <tr style={{ background: "#1d1d2e" }}>
+                                <th style={{ padding: "14px", textAlign: "left" }}>Metryka</th>
+                                <th style={{ padding: "14px", textAlign: "left" }}>Wartość</th>
+                            </tr>
+                            </thead>
+
+                            <tbody>
+                            <tr style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                                <td style={{ padding: "14px" }}>Wszyscy użytkownicy</td>
+                                <td style={{ padding: "14px" }}>{adminStats?.usersCount ?? 0}</td>
+                            </tr>
+
+                            <tr style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                                <td style={{ padding: "14px" }}>Administratorzy</td>
+                                <td style={{ padding: "14px" }}>{adminStats?.adminsCount ?? 0}</td>
+                            </tr>
+
+                            <tr style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                                <td style={{ padding: "14px" }}>Podłączone konta Gmail</td>
+                                <td style={{ padding: "14px" }}>
+                                    {adminStats?.mailAccountsCount ?? 0}
+                                </td>
+                            </tr>
+
+                            <tr style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                                <td style={{ padding: "14px" }}>Podłączone konta Google</td>
+                                <td style={{ padding: "14px" }}>
+                                    {adminStats?.googleAccountsCount ?? 0}
+                                </td>
+                            </tr>
+
+                            <tr style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                                <td style={{ padding: "14px" }}>Wszystkie powiadomienia</td>
+                                <td style={{ padding: "14px" }}>
+                                    {adminStats?.notificationsCount ?? 0}
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </main>
+            </div>
+        );
+    }
+
     return (
         <div className="dashboard">
             <aside className="sidebar">
@@ -316,7 +586,9 @@ function App() {
                     {mailAccounts.map((account) => (
                         <div className="mail-account-row" key={account.id}>
                             <button
-                                className={mailFilter === account.id ? "nav-item active" : "nav-item"}
+                                className={
+                                    mailFilter === account.id ? "nav-item active" : "nav-item"
+                                }
                                 onClick={() => {
                                     setTypeFilter("EMAIL");
                                     setMailFilter(account.id);
@@ -444,7 +716,9 @@ function App() {
                                         {typeLabel(notification.type)}
                                     </span>
 
-                                    <span className="date">{formatDate(notification.receivedAt)}</span>
+                                    <span className="date">
+                                        {formatDate(notification.receivedAt)}
+                                    </span>
                                 </div>
 
                                 <h3>{notification.subject || "(Brak tematu)"}</h3>
@@ -458,16 +732,25 @@ function App() {
                     <div className="preview">
                         {selectedNotification ? (
                             <>
-                                <span className={`badge big ${selectedNotification.type.toLowerCase()}`}>
+                                <span
+                                    className={`badge big ${selectedNotification.type.toLowerCase()}`}
+                                >
                                     {typeLabel(selectedNotification.type)}
                                 </span>
 
                                 <h2>{selectedNotification.subject || "(Brak tematu)"}</h2>
 
                                 <div className="meta">
-                                    <p><b>Od:</b> {selectedNotification.sender}</p>
-                                    <p><b>Do:</b> {selectedNotification.recipient}</p>
-                                    <p><b>Data:</b> {formatDate(selectedNotification.receivedAt)}</p>
+                                    <p>
+                                        <b>Od:</b> {selectedNotification.sender}
+                                    </p>
+                                    <p>
+                                        <b>Do:</b> {selectedNotification.recipient}
+                                    </p>
+                                    <p>
+                                        <b>Data:</b>{" "}
+                                        {formatDate(selectedNotification.receivedAt)}
+                                    </p>
                                 </div>
 
                                 <div className="mail-content">

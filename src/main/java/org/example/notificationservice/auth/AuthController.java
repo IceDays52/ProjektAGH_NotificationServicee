@@ -2,10 +2,10 @@ package org.example.notificationservice.auth;
 
 import org.example.notificationservice.user.User;
 import org.example.notificationservice.user.UserService;
+import org.example.notificationservice.user.dto.AuthResponse;
 import org.example.notificationservice.user.dto.LoginRequest;
 import org.example.notificationservice.user.dto.RegisterRequest;
 import org.springframework.web.bind.annotation.*;
-
 
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
@@ -24,7 +24,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public User login(@RequestBody LoginRequest request) {
+    public AuthResponse login(@RequestBody LoginRequest request) {
         return userService.login(request);
     }
 }
