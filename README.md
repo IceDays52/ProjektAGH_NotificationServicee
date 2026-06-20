@@ -237,25 +237,3 @@ google.redirect.uri=http://localhost:8080/api/google/oauth/callback
 
 ---
 
-# 📸 Widoki aplikacji
-
-## Dashboard użytkownika
-
-- Powiadomienia
-- Gmail
-- Google Calendar
-- Google Tasks
-
-## Dashboard administratora
-
-- Statystyki systemowe
-- Zarządzanie użytkownikami
-- Monitoring systemu
-
----
-
-# 👨‍💻 Autor
-
-**Sebastian Ciula**
-
-Projekt wykonany jako aplikacja do centralizacji powiadomień i integracji usług Google.
